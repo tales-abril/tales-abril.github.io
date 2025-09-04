@@ -4,21 +4,36 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Liga Nacional de Robótica</title>
+<link rel="icon" href="data:,">
 <style>
-body {margin:0;font-family:Arial,sans-serif;background:linear-gradient(135deg,#0a0a2a,#1a1a3d);color:#fff;display:flex;justify-content:center;padding:20px;}
-#login,#app{background: rgba(26,26,61,0.9); padding:20px; border-radius:15px; width:100%; max-width:900px; box-shadow:0 0 20px #4b2b82; transition: all 0.5s ease;}
-input,select,button{width:100%;padding:10px;margin:6px 0;border-radius:5px;border:none;font-size:1em;transition:all 0.3s ease;}
-button{background:#4b2b82;color:#fff;cursor:pointer;font-weight:bold;}
-button:hover{background:#6a0dad;transform:scale(1.05);}
-h2,h3{text-align:center;color:#9b30ff;margin:10px 0;opacity:0;animation:fadeIn 1s ease forwards;}
-@keyframes fadeIn{to{opacity:1;}}
-table{width:100%;border-collapse:collapse;margin-top:10px;transition:all 0.5s ease;}
-th,td{padding:6px;border:1px solid #444;text-align:center;font-size:0.9em;}
-img{border-radius:10px;}
-.section{display:none;margin-top:10px;opacity:0;transition:opacity 0.5s ease;}
-.section.show{display:block;opacity:1;}
-.nav-buttons button{width:auto;margin-right:5px;display:inline-block;}
-select.robotSelect{width:auto;display:inline-block;margin-right:5px;}
+body {
+    margin:0; font-family: Arial,sans-serif;
+    background: linear-gradient(135deg,#0a0a2a,#1a1a3d);
+    color:#fff;
+    display:flex; justify-content:center; padding:20px;
+}
+#login,#app {
+    background: rgba(26,26,61,0.9);
+    padding: 20px;
+    border-radius: 15px;
+    width: 100%; max-width: 900px;
+    box-shadow: 0 0 20px #4b2b82;
+    transition: all 0.5s ease;
+}
+input, select, button {
+    width:100%; padding:10px; margin:6px 0; border-radius:5px; border:none; font-size:1em; transition:all 0.3s ease;
+}
+button { background:#4b2b82; color:#fff; cursor:pointer; font-weight:bold;}
+button:hover { background:#6a0dad; transform:scale(1.05);}
+h2,h3 { text-align:center; color:#9b30ff; margin:10px 0; opacity:0; animation:fadeIn 1s ease forwards;}
+@keyframes fadeIn { to{opacity:1;} }
+table { width:100%; border-collapse:collapse; margin-top:10px; transition:all 0.5s ease;}
+th,td { padding:6px; border:1px solid #444; text-align:center; font-size:0.9em;}
+img { border-radius:10px; max-width:50px; }
+.section { display:none; margin-top:10px; opacity:0; transition:opacity 0.5s ease;}
+.section.show { display:block; opacity:1; }
+.nav-buttons button { width:auto; margin-right:5px; display:inline-block;}
+select.robotSelect { width:auto; display:inline-block; margin-right:5px; }
 </style>
 </head>
 <body>
@@ -32,37 +47,39 @@ select.robotSelect{width:auto;display:inline-block;margin-right:5px;}
 <div id="app">
 <h2>Liga Nacional de Robótica</h2>
 <div class="nav-buttons">
+<button onclick="showSection('inicial')">Escuela Inicial</button>
+<button onclick="showSection('general')">Categorías Generales</button>
 <button onclick="showSection('robots')">Robots</button>
-<button onclick="showSection('batallas')">Registrar Ganador</button>
 <button onclick="showSection('ganadores')">Ganadores</button>
 </div>
 
-<!-- AGREGAR ROBOTS -->
-<div id="robots" class="section">
-<h3>Agregar Robot</h3>
-<input type="text" id="robotName" placeholder="Nombre del robot">
-<select id="robotCategory">
-  <option value="Inicial">Inicial</option>
-  <option value="General">General</option>
-</select>
-<button onclick="agregarRobot()">Agregar Robot</button>
+<!-- SECCIONES -->
+<div id="inicial" class="section">
+<h3>Escuela Inicial (Batallas y Dibujos)</h3>
+<div id="battleInicial">
+<select id="robot1Inicial" class="robotSelect"></select>
+<select id="robot2Inicial" class="robotSelect"></select>
+<button onclick="registrarGanador('inicial')">Registrar Ganador</button>
+</div>
+</div>
 
-<h3>Lista de Robots</h3>
-<table id="robotsTable">
-<thead><tr><th>Nombre</th><th>Categoría</th><th>Puntos</th></tr></thead>
+<div id="general" class="section">
+<h3>Categorías Generales</h3>
+<div id="battleGeneral">
+<select id="robot1General" class="robotSelect"></select>
+<select id="robot2General" class="robotSelect"></select>
+<button onclick="registrarGanador('general')">Registrar Ganador</button>
+</div>
+</div>
+
+<div id="robots" class="section">
+<h3>Robots Generales</h3>
+<table id="robotsTableGeneral">
+<thead><tr><th>Nombre</th><th>Foto</th><th>Puntos</th></tr></thead>
 <tbody></tbody>
 </table>
 </div>
 
-<!-- BATALLAS -->
-<div id="batallas" class="section">
-<h3>Registrar Ganador</h3>
-<select id="robot1" class="robotSelect"></select>
-<select id="robot2" class="robotSelect"></select>
-<button onclick="registrarGanador()">Registrar Ganador</button>
-</div>
-
-<!-- GANADORES -->
 <div id="ganadores" class="section">
 <h3>Ganadores</h3>
 <div id="ganadoresList"></div>
@@ -70,9 +87,10 @@ select.robotSelect{width:auto;display:inline-block;margin-right:5px;}
 
 <script>
 document.addEventListener('DOMContentLoaded', function(){
-
 const ADMIN_PASSWORD="1234";
-let robots = []; // Array de robots
+
+// Array de robots desde localStorage
+let robots = JSON.parse(localStorage.getItem('robots')) || [];
 
 // LOGIN
 window.login = function(){
@@ -80,7 +98,7 @@ window.login = function(){
     if(pass===ADMIN_PASSWORD){
         document.getElementById('login').style.display='none';
         document.getElementById('app').style.display='block';
-        actualizarTabla();
+        cargarRobots();
         actualizarSelects();
         cargarGanadores();
     }else alert("Contraseña incorrecta");
@@ -93,57 +111,56 @@ window.showSection = function(sec){
     if(section) section.classList.add('show');
 }
 
-// AGREGAR ROBOT
-window.agregarRobot = function(){
-    const nombre = document.getElementById('robotName').value.trim();
-    const categoria = document.getElementById('robotCategory').value;
-    if(!nombre) return alert("Ingresa un nombre");
-    robots.push({id:Date.now(), name:nombre, category:categoria, points:0});
-    document.getElementById('robotName').value='';
-    actualizarTabla();
-    actualizarSelects();
-    cargarGanadores();
-}
-
-// ACTUALIZAR TABLA DE ROBOTS
-function actualizarTabla(){
-    const tbody = document.querySelector('#robotsTable tbody');
-    tbody.innerHTML='';
-    robots.forEach(r=>{
-        const tr=document.createElement('tr');
-        tr.innerHTML=`<td>${r.name}</td><td>${r.category}</td><td>${r.points}</td>`;
-        tbody.appendChild(tr);
+// CARGAR ROBOTS EN LA TABLA
+function cargarRobots(){
+    const tableBody = document.querySelector('#robotsTableGeneral tbody');
+    tableBody.innerHTML='';
+    robots.forEach(robot=>{
+        const row = document.createElement('tr');
+        row.innerHTML=`<td>${robot.name}</td>
+        <td>${robot.photo ? '<img src="'+robot.photo+'">' : ''}</td>
+        <td>${robot.points || 0}</td>`;
+        tableBody.appendChild(row);
     });
 }
 
-// ACTUALIZAR SELECTS DE BATALLAS
+// ACTUALIZAR SELECTS PARA BATALLAS
 function actualizarSelects(){
-    const sel1=document.getElementById('robot1');
-    const sel2=document.getElementById('robot2');
-    sel1.innerHTML=''; sel2.innerHTML='';
-    robots.forEach(r=>{
-        const opt1=document.createElement('option'); opt1.value=r.id; opt1.text=r.name; sel1.appendChild(opt1);
-        const opt2=document.createElement('option'); opt2.value=r.id; opt2.text=r.name; sel2.appendChild(opt2);
+    ['robot1Inicial','robot2Inicial','robot1General','robot2General'].forEach(id=>{
+        const sel = document.getElementById(id);
+        sel.innerHTML='';
+        robots.forEach((r,index)=>{
+            const opt = document.createElement('option');
+            opt.value=index; opt.text=r.name;
+            sel.appendChild(opt);
+        });
     });
 }
 
 // REGISTRAR GANADOR
-window.registrarGanador = function(){
-    const r1id=parseInt(document.getElementById('robot1').value);
-    const r2id=parseInt(document.getElementById('robot2').value);
-    if(r1id===r2id) return alert("Selecciona robots diferentes");
-    let ganador = prompt("Ingresa el nombre del ganador:");
-    if(!ganador) return alert("Debes indicar ganador");
+window.registrarGanador = function(tipo){
+    let sel1, sel2;
+    if(tipo==='inicial'){ sel1='robot1Inicial'; sel2='robot2Inicial'; }
+    else{ sel1='robot1General'; sel2='robot2General'; }
 
-    robots.forEach(r=>{
-        if(r.name===ganador){
-            r.points = (r.points||0)+1;
-        } else if(r.id===r1id || r.id===r2id){
-            r.points = (r.points||0)+0.5;
+    const r1index = parseInt(document.getElementById(sel1).value);
+    const r2index = parseInt(document.getElementById(sel2).value);
+
+    if(r1index===r2index) return alert("Selecciona robots diferentes");
+
+    let ganadorNombre = prompt("Ingresa el nombre del ganador:");
+    if(!ganadorNombre) return alert("Debes indicar ganador");
+
+    robots.forEach((r,i)=>{
+        if(r.name === ganadorNombre){
+            r.points = (r.points || 0) + 1;
+        } else if(i===r1index || i===r2index){
+            r.points = (r.points || 0) + 0.5;
         }
     });
 
-    actualizarTabla();
+    localStorage.setItem('robots', JSON.stringify(robots));
+    cargarRobots();
     cargarGanadores();
 }
 
@@ -151,13 +168,14 @@ window.registrarGanador = function(){
 function cargarGanadores(){
     const list = document.getElementById('ganadoresList');
     list.innerHTML='';
-    robots.filter(r=>r.points>0).forEach(r=>{
-        const div = document.createElement('div');
-        div.textContent = `${r.name} (${r.category}): ${r.points} puntos`;
-        list.appendChild(div);
+    robots.forEach(robot=>{
+        if(robot.points && robot.points>0){
+            const div = document.createElement('div');
+            div.textContent=`${robot.name}: ${robot.points} puntos`;
+            list.appendChild(div);
+        }
     });
 }
-
 });
 </script>
 
