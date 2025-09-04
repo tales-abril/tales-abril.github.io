@@ -4,32 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Liga Nacional de Robótica</title>
-<link rel="icon" href="data:,">
 <style>
-body {
-    margin:0; font-family: Arial,sans-serif;
-    background: linear-gradient(135deg,#0a0a2a,#1a1a3d);
-    color:#fff;
-    display:flex; justify-content:center; padding:20px;
-}
-#login,#app {
-    background: rgba(26,26,61,0.9);
-    padding: 20px;
-    border-radius: 15px;
-    width: 100%; max-width: 900px;
-    box-shadow: 0 0 20px #4b2b82;
-    transition: all 0.5s ease;
-}
-input, select, button {
-    width:100%; padding:10px; margin:6px 0; border-radius:5px; border:none; font-size:1em; transition:all 0.3s ease;
-}
+body { margin:0; font-family: Arial,sans-serif; background: linear-gradient(135deg,#0a0a2a,#1a1a3d); color:#fff; display:flex; justify-content:center; padding:20px;}
+#login,#app { background: rgba(26,26,61,0.9); padding:20px; border-radius:15px; width:100%; max-width:900px; box-shadow:0 0 20px #4b2b82;}
+input, select, button { width:100%; padding:10px; margin:6px 0; border-radius:5px; border:none; font-size:1em;}
 button { background:#4b2b82; color:#fff; cursor:pointer; font-weight:bold;}
 button:hover { background:#6a0dad; transform:scale(1.05);}
 h2,h3 { text-align:center; color:#9b30ff; margin:10px 0; opacity:0; animation:fadeIn 1s ease forwards;}
 @keyframes fadeIn { to{opacity:1;} }
 table { width:100%; border-collapse:collapse; margin-top:10px; transition:all 0.5s ease;}
 th,td { padding:6px; border:1px solid #444; text-align:center; font-size:0.9em;}
-img { border-radius:10px; max-width:50px; }
+img { border-radius:10px; }
 .section { display:none; margin-top:10px; opacity:0; transition:opacity 0.5s ease;}
 .section.show { display:block; opacity:1; }
 .nav-buttons button { width:auto; margin-right:5px; display:inline-block;}
@@ -85,12 +70,24 @@ select.robotSelect { width:auto; display:inline-block; margin-right:5px; }
 <div id="ganadoresList"></div>
 </div>
 
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+
 <script>
 document.addEventListener('DOMContentLoaded', function(){
+const firebaseConfig = {
+  apiKey: "AIzaSyB1rBZF0QMqMzQCrNdjqb-T0aH_N6080B4",
+  authDomain: "robotica-chubut-lago-puelo.firebaseapp.com",
+  databaseURL: "https://robotica-chubut-lago-puelo-default-rtdb.firebaseio.com",
+  projectId: "robotica-chubut-lago-puelo",
+  storageBucket: "robotica-chubut-lago-puelo.appspot.com",
+  messagingSenderId: "186990868613",
+  appId: "1:186990868613:web:4c877dd37d839ed1f611ec"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
 const ADMIN_PASSWORD="1234";
-
-// Array de robots desde localStorage
-let robots = JSON.parse(localStorage.getItem('robots')) || [];
 
 // LOGIN
 window.login = function(){
@@ -111,28 +108,35 @@ window.showSection = function(sec){
     if(section) section.classList.add('show');
 }
 
-// CARGAR ROBOTS EN LA TABLA
+// CARGAR ROBOTS
 function cargarRobots(){
-    const tableBody = document.querySelector('#robotsTableGeneral tbody');
-    tableBody.innerHTML='';
-    robots.forEach(robot=>{
-        const row = document.createElement('tr');
-        row.innerHTML=`<td>${robot.name}</td>
-        <td>${robot.photo ? '<img src="'+robot.photo+'">' : ''}</td>
-        <td>${robot.points || 0}</td>`;
-        tableBody.appendChild(row);
+    db.ref('robots_general').on('value', snapshot=>{
+        const tableBody = document.querySelector('#robotsTableGeneral tbody');
+        tableBody.innerHTML='';
+        snapshot.forEach(c=>{
+            const robot = c.val();
+            const row = document.createElement('tr');
+            row.innerHTML=`<td>${robot.name}</td>
+            <td>${robot.photo ? '<img src="'+robot.photo+'" width="50">' : ''}</td>
+            <td>${robot.points}</td>`;
+            tableBody.appendChild(row);
+        });
     });
 }
 
 // ACTUALIZAR SELECTS PARA BATALLAS
 function actualizarSelects(){
-    ['robot1Inicial','robot2Inicial','robot1General','robot2General'].forEach(id=>{
-        const sel = document.getElementById(id);
-        sel.innerHTML='';
-        robots.forEach((r,index)=>{
-            const opt = document.createElement('option');
-            opt.value=index; opt.text=r.name;
-            sel.appendChild(opt);
+    db.ref('robots_general').once('value', snapshot=>{
+        const robots = snapshot.val();
+        ['robot1Inicial','robot2Inicial','robot1General','robot2General'].forEach(id=>{
+            const sel = document.getElementById(id);
+            sel.innerHTML='';
+            for(let key in robots){
+                const r = robots[key];
+                const opt = document.createElement('option');
+                opt.value=key; opt.text=r.name;
+                sel.appendChild(opt);
+            }
         });
     });
 }
@@ -142,42 +146,47 @@ window.registrarGanador = function(tipo){
     let sel1, sel2;
     if(tipo==='inicial'){ sel1='robot1Inicial'; sel2='robot2Inicial'; }
     else{ sel1='robot1General'; sel2='robot2General'; }
+    const r1key = document.getElementById(sel1).value;
+    const r2key = document.getElementById(sel2).value;
+    if(r1key===r2key) return alert("Selecciona robots diferentes");
 
-    const r1index = parseInt(document.getElementById(sel1).value);
-    const r2index = parseInt(document.getElementById(sel2).value);
+    let ganador = prompt("Ingresa el nombre del ganador:");
+    if(!ganador) return alert("Debes indicar ganador");
 
-    if(r1index===r2index) return alert("Selecciona robots diferentes");
-
-    let ganadorNombre = prompt("Ingresa el nombre del ganador:");
-    if(!ganadorNombre) return alert("Debes indicar ganador");
-
-    robots.forEach((r,i)=>{
-        if(r.name === ganadorNombre){
-            r.points = (r.points || 0) + 1;
-        } else if(i===r1index || i===r2index){
-            r.points = (r.points || 0) + 0.5;
-        }
+    db.ref('robots_general').once('value', snapshot=>{
+        snapshot.forEach(c=>{
+            const key = c.key;
+            const robot = c.val();
+            if(robot.name === ganador){
+                let pts = robot.points || 0;
+                pts+=1;
+                db.ref('robots_general/'+key).update({points:pts});
+            } else if(key===r1key || key===r2key){
+                let pts = robot.points || 0;
+                pts+=0.5;
+                db.ref('robots_general/'+key).update({points:pts});
+            }
+        });
     });
-
-    localStorage.setItem('robots', JSON.stringify(robots));
-    cargarRobots();
     cargarGanadores();
 }
 
 // CARGAR GANADORES
 function cargarGanadores(){
-    const list = document.getElementById('ganadoresList');
-    list.innerHTML='';
-    robots.forEach(robot=>{
-        if(robot.points && robot.points>0){
-            const div = document.createElement('div');
-            div.textContent=`${robot.name}: ${robot.points} puntos`;
-            list.appendChild(div);
-        }
+    db.ref('robots_general').once('value', snapshot=>{
+        const list = document.getElementById('ganadoresList');
+        list.innerHTML='';
+        snapshot.forEach(c=>{
+            const robot = c.val();
+            if(robot.points && robot.points>0){
+                const div = document.createElement('div');
+                div.textContent=`${robot.name}: ${robot.points} puntos`;
+                list.appendChild(div);
+            }
+        });
     });
 }
 });
 </script>
-
 </body>
 </html>
