@@ -4,141 +4,48 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Subir Robot</title>
-<link rel="icon" href="data:,">
 <style>
-body {
-    font-family: Arial, sans-serif;
-    background: linear-gradient(135deg, #0a0a2a, #1a1a3d);
-    color: #fff;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    margin: 0;
-}
-#uploadForm {
-    background: rgba(26,26,61,0.9);
-    padding: 20px;
-    border-radius: 15px;
-    width: 100%;
-    max-width: 400px;
-    box-shadow: 0 0 20px #4b2b82;
-    transition: all 0.5s ease;
-}
-input, select, button {
-    width: 100%;
-    padding: 10px;
-    margin: 6px 0;
-    border-radius: 5px;
-    border: none;
-    font-size: 1em;
-    transition: all 0.3s ease;
-}
-button {
-    background: #4b2b82;
-    color: #fff;
-    cursor: pointer;
-    font-weight: bold;
-}
-button:hover {
-    background: #6a0dad;
-    transform: scale(1.05);
-}
-img {
-    width: 100px;
-    margin-top: 10px;
-    border-radius: 10px;
-    transition: all 0.5s ease;
-}
-h2 {
-    text-align: center;
-    color: #9b30ff;
-    animation: fadeIn 1s ease forwards;
-    opacity: 0;
-}
-p {
-    transition: all 0.5s ease;
-}
-@keyframes fadeIn {
-    to {opacity:1;}
-}
+body { font-family: Arial,sans-serif; background:#1a1a3d; color:#fff; display:flex; justify-content:center; align-items:center; height:100vh; }
+#uploadBox { background: rgba(26,26,61,0.9); padding:20px; border-radius:15px; width:100%; max-width:400px; }
+input, button { width:100%; padding:10px; margin:6px 0; border-radius:5px; border:none; font-size:1em; }
+button { background:#4b2b82; color:#fff; cursor:pointer; font-weight:bold; }
+button:hover { background:#6a0dad; transform:scale(1.05); }
+img { max-width:100%; margin-top:10px; border-radius:10px; }
 </style>
 </head>
 <body>
-<div id="uploadForm">
+
+<div id="uploadBox">
 <h2>Subir Robot</h2>
 <input type="text" id="robotName" placeholder="Nombre del robot">
-<select id="robotCategory">
-    <option value="dibujos">Dibujos</option>
-    <option value="batallas">Batallas</option>
-    <option value="sumo">Sumo</option>
-    <option value="mini_sumo">Mini Sumo</option>
-    <option value="micro_sumo">Micro Sumo</option>
-    <option value="carreras">Carreras</option>
-    <option value="futbol">Fútbol</option>
-    <option value="futbol_amistoso">Fútbol Amistoso</option>
-    <option value="laberinto">Laberinto</option>
-</select>
-<input type="file" id="fileInput" accept="image/*">
-<img id="preview" src="" alt="Preview">
-<button onclick="uploadRobot()">Subir Robot</button>
-<p id="status"></p>
+<input type="file" id="robotPhoto" accept="image/*">
+<button onclick="subirRobot()">Subir Robot</button>
+<div id="preview"></div>
 </div>
 
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
-
 <script>
-// CONFIGURA TU FIREBASE AQUI
-const firebaseConfig = {
-  apiKey: "AIzaSyB1rBZF0QMqMzQCrNdjqb-T0aH_N6080B4",
-  authDomain: "robotica-chubut-lago-puelo.firebaseapp.com",
-  databaseURL: "https://robotica-chubut-lago-puelo-default-rtdb.firebaseio.com",
-  projectId: "robotica-chubut-lago-puelo",
-  storageBucket: "robotica-chubut-lago-puelo.appspot.com", // 👈 corregido
-  messagingSenderId: "186990868613",
-  appId: "1:186990868613:web:4c877dd37d839ed1f611ec"
-};
+// Array de robots guardado en localStorage
+let robots = JSON.parse(localStorage.getItem('robots')) || [];
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const storage = firebase.storage();
-
-// Preview de imagen
-document.getElementById('fileInput').addEventListener('change', e=>{
-    const file = e.target.files[0];
-    if(file){
-        const reader = new FileReader();
-        reader.onload = () => document.getElementById('preview').src = reader.result;
-        reader.readAsDataURL(file);
-    }
-});
-
-// Subir robot
-function uploadRobot(){
+function subirRobot(){
     const name = document.getElementById('robotName').value.trim();
-    const category = document.getElementById('robotCategory').value;
-    const file = document.getElementById('fileInput').files[0];
-    if(!name || !file) return alert("Completa todos los campos y selecciona imagen");
+    const file = document.getElementById('robotPhoto').files[0];
 
-    const storageRef = storage.ref('robots/'+name+'_'+Date.now()+'.jpg');
-    storageRef.put(file).then(snapshot=>{
-        snapshot.ref.getDownloadURL().then(url=>{
-            db.ref('robots_general').push({name, category, photo:url, points:0})
-            .then(()=>{
-                document.getElementById('status').textContent="Robot subido correctamente!";
-                document.getElementById('robotName').value='';
-                document.getElementById('fileInput').value='';
-                document.getElementById('preview').src='';
-            });
-        });
-    }).catch(err=>{
-        document.getElementById('status').textContent="Error: "+err;
-        console.error(err);
-    });
+    if(!name) return alert("Ingresa un nombre");
+    if(!file) return alert("Selecciona una foto");
+
+    const reader = new FileReader();
+    reader.onload = function(e){
+        const photo = e.target.result; // base64
+        robots.push({id:Date.now(), name:name, photo:photo, points:0});
+        localStorage.setItem('robots', JSON.stringify(robots));
+        document.getElementById('preview').innerHTML = `<p>Robot subido: ${name}</p><img src="${photo}">`;
+        document.getElementById('robotName').value='';
+        document.getElementById('robotPhoto').value='';
+    };
+    reader.readAsDataURL(file);
 }
 </script>
+
 </body>
 </html>
