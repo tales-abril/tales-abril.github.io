@@ -1,79 +1,45 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Subir Robot - Liga Nacional de Robótica</title>
-<style>
-body { font-family: Arial,sans-serif; background: #1a1a3d; color: #fff; display:flex; flex-direction:column; align-items:center; padding:20px;}
-#form { background: rgba(26,26,61,0.9); padding:20px; border-radius:15px; width:300px; box-shadow:0 0 20px #4b2b82;}
-input, button { width:100%; padding:10px; margin:6px 0; border-radius:5px; border:none; font-size:1em;}
-button { background:#4b2b82; color:#fff; font-weight:bold; cursor:pointer;}
-button:hover { background:#6a0dad; }
-</style>
+  <meta charset="UTF-8">
+  <title>Subir Robot</title>
 </head>
 <body>
+  <h1>Subir Robot</h1>
+  <form id="robotForm">
+    <input type="text" id="nombre" placeholder="Nombre del robot" required><br><br>
+    <input type="text" id="categoria" placeholder="Categoría" required><br><br>
+    <input type="text" id="imagenURL" placeholder="URL de la imagen" required><br><br>
+    <button type="submit">Subir</button>
+  </form>
 
-<div id="form">
-<h2>Subir Robot</h2>
-<input type="text" id="robotName" placeholder="Nombre del robot" required>
-<input type="file" id="robotPhoto" accept="image/*" required>
-<button onclick="subirRobot()">Subir Robot</button>
-<div id="status"></div>
-</div>
+  <p id="msg"></p>
 
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
+  <script>
+    const SCRIPT_URL = "TU_URL_DEL_WEBAPP"; // 👈 pon aquí la URL del Web App publicado
 
-<script>
-const firebaseConfig = {
-  apiKey: "AIzaSyB1rBZF0QMqMzQCrNdjqb-T0aH_N6080B4",
-  authDomain: "robotica-chubut-lago-puelo.firebaseapp.com",
-  databaseURL: "https://robotica-chubut-lago-puelo-default-rtdb.firebaseio.com",
-  projectId: "robotica-chubut-lago-puelo",
-  storageBucket: "robotica-chubut-lago-puelo.appspot.com",
-  messagingSenderId: "186990868613",
-  appId: "1:186990868613:web:4c877dd37d839ed1f611ec"
-};
+    document.getElementById("robotForm").addEventListener("submit", function(e) {
+      e.preventDefault();
 
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const storage = firebase.storage();
+      const data = {
+        nombre: document.getElementById("nombre").value,
+        categoria: document.getElementById("categoria").value,
+        imagenURL: document.getElementById("imagenURL").value
+      };
 
-function subirRobot(){
-    const name = document.getElementById('robotName').value.trim();
-    const file = document.getElementById('robotPhoto').files[0];
-    const status = document.getElementById('status');
-
-    if(!name || !file){
-        alert("Completa todos los campos");
-        return;
-    }
-
-    const storageRef = storage.ref('robots/' + file.name);
-    const uploadTask = storageRef.put(file);
-
-    status.textContent = "Subiendo foto...";
-
-    uploadTask.on('state_changed', 
-        snapshot => {},
-        error => { status.textContent = "Error al subir: "+error; },
-        () => {
-            uploadTask.snapshot.ref.getDownloadURL().then(url=>{
-                const newRobotRef = db.ref('robots_general').push();
-                newRobotRef.set({
-                    name: name,
-                    photo: url,
-                    points: 0
-                });
-                status.textContent = "Robot subido correctamente!";
-                document.getElementById('robotName').value = '';
-                document.getElementById('robotPhoto').value = '';
-            });
-        }
-    );
-}
-</script>
+      fetch(SCRIPT_URL, {
+        method: "POST",
+        body: JSON.stringify(data),
+        headers: { "Content-Type": "application/json" }
+      })
+      .then(res => res.json())
+      .then(res => {
+        document.getElementById("msg").innerText = res.message;
+      })
+      .catch(err => {
+        document.getElementById("msg").innerText = "❌ Error: " + err;
+      });
+    });
+  </script>
 </body>
 </html>
