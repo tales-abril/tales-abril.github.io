@@ -1,192 +1,48 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Liga Nacional de Robótica</title>
-<style>
-body { margin:0; font-family: Arial,sans-serif; background: linear-gradient(135deg,#0a0a2a,#1a1a3d); color:#fff; display:flex; justify-content:center; padding:20px;}
-#login,#app { background: rgba(26,26,61,0.9); padding:20px; border-radius:15px; width:100%; max-width:900px; box-shadow:0 0 20px #4b2b82;}
-input, select, button { width:100%; padding:10px; margin:6px 0; border-radius:5px; border:none; font-size:1em;}
-button { background:#4b2b82; color:#fff; cursor:pointer; font-weight:bold;}
-button:hover { background:#6a0dad; transform:scale(1.05);}
-h2,h3 { text-align:center; color:#9b30ff; margin:10px 0; opacity:0; animation:fadeIn 1s ease forwards;}
-@keyframes fadeIn { to{opacity:1;} }
-table { width:100%; border-collapse:collapse; margin-top:10px; transition:all 0.5s ease;}
-th,td { padding:6px; border:1px solid #444; text-align:center; font-size:0.9em;}
-img { border-radius:10px; }
-.section { display:none; margin-top:10px; opacity:0; transition:opacity 0.5s ease;}
-.section.show { display:block; opacity:1; }
-.nav-buttons button { width:auto; margin-right:5px; display:inline-block;}
-select.robotSelect { width:auto; display:inline-block; margin-right:5px; }
-</style>
+  <meta charset="UTF-8">
+  <title>Lista de Robots</title>
+  <style>
+    .robot {
+      border: 1px solid #ccc;
+      padding: 10px;
+      margin: 10px;
+      display: inline-block;
+      text-align: center;
+    }
+    img {
+      max-width: 200px;
+      display: block;
+      margin: auto;
+    }
+  </style>
 </head>
 <body>
+  <h1>Lista de Robots</h1>
+  <div id="robots"></div>
 
-<div id="login">
-<h2>Login Admin</h2>
-<input type="password" id="password" placeholder="Contraseña">
-<button onclick="login()">Entrar</button>
-</div>
+  <script>
+    const SHEET_JSON_URL = "https://docs.google.com/spreadsheets/d/TU_ID_DE_HOJA/gviz/tq?tqx=out:json&sheet=Robots";
 
-<div id="app">
-<h2>Liga Nacional de Robótica</h2>
-<div class="nav-buttons">
-<button onclick="showSection('inicial')">Escuela Inicial</button>
-<button onclick="showSection('general')">Categorías Generales</button>
-<button onclick="showSection('robots')">Robots</button>
-<button onclick="showSection('ganadores')">Ganadores</button>
-</div>
+    fetch(SHEET_JSON_URL)
+      .then(res => res.text())
+      .then(txt => {
+        const json = JSON.parse(txt.substr(47).slice(0, -2)); // Limpia el JSON raro de Google
+        const rows = json.table.rows;
 
-<!-- SECCIONES -->
-<div id="inicial" class="section">
-<h3>Escuela Inicial (Batallas y Dibujos)</h3>
-<div id="battleInicial">
-<select id="robot1Inicial" class="robotSelect"></select>
-<select id="robot2Inicial" class="robotSelect"></select>
-<button onclick="registrarGanador('inicial')">Registrar Ganador</button>
-</div>
-</div>
+        const container = document.getElementById("robots");
+        rows.forEach(r => {
+          const nombre = r.c[1]?.v || "";
+          const categoria = r.c[2]?.v || "";
+          const imagen = r.c[3]?.v || "";
 
-<div id="general" class="section">
-<h3>Categorías Generales</h3>
-<div id="battleGeneral">
-<select id="robot1General" class="robotSelect"></select>
-<select id="robot2General" class="robotSelect"></select>
-<button onclick="registrarGanador('general')">Registrar Ganador</button>
-</div>
-</div>
-
-<div id="robots" class="section">
-<h3>Robots Generales</h3>
-<table id="robotsTableGeneral">
-<thead><tr><th>Nombre</th><th>Foto</th><th>Puntos</th></tr></thead>
-<tbody></tbody>
-</table>
-</div>
-
-<div id="ganadores" class="section">
-<h3>Ganadores</h3>
-<div id="ganadoresList"></div>
-</div>
-
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-storage-compat.js"></script>
-
-<script>
-document.addEventListener('DOMContentLoaded', function(){
-const firebaseConfig = {
-  apiKey: "AIzaSyB1rBZF0QMqMzQCrNdjqb-T0aH_N6080B4",
-  authDomain: "robotica-chubut-lago-puelo.firebaseapp.com",
-  databaseURL: "https://robotica-chubut-lago-puelo-default-rtdb.firebaseio.com",
-  projectId: "robotica-chubut-lago-puelo",
-  storageBucket: "robotica-chubut-lago-puelo.appspot.com",
-  messagingSenderId: "186990868613",
-  appId: "1:186990868613:web:4c877dd37d839ed1f611ec"
-};
-firebase.initializeApp(firebaseConfig);
-const db = firebase.database();
-const ADMIN_PASSWORD="1234";
-
-// LOGIN
-window.login = function(){
-    const pass=document.getElementById('password').value;
-    if(pass===ADMIN_PASSWORD){
-        document.getElementById('login').style.display='none';
-        document.getElementById('app').style.display='block';
-        cargarRobots();
-        actualizarSelects();
-        cargarGanadores();
-    }else alert("Contraseña incorrecta");
-}
-
-// SECCIONES
-window.showSection = function(sec){
-    document.querySelectorAll('.section').forEach(s=>s.classList.remove('show'));
-    const section = document.getElementById(sec);
-    if(section) section.classList.add('show');
-}
-
-// CARGAR ROBOTS
-function cargarRobots(){
-    db.ref('robots_general').on('value', snapshot=>{
-        const tableBody = document.querySelector('#robotsTableGeneral tbody');
-        tableBody.innerHTML='';
-        snapshot.forEach(c=>{
-            const robot = c.val();
-            const row = document.createElement('tr');
-            row.innerHTML=`<td>${robot.name}</td>
-            <td>${robot.photo ? '<img src="'+robot.photo+'" width="50">' : ''}</td>
-            <td>${robot.points}</td>`;
-            tableBody.appendChild(row);
+          const div = document.createElement("div");
+          div.className = "robot";
+          div.innerHTML = `<h3>${nombre}</h3><p>${categoria}</p><img src="${imagen}" alt="${nombre}">`;
+          container.appendChild(div);
         });
-    });
-}
-
-// ACTUALIZAR SELECTS PARA BATALLAS
-function actualizarSelects(){
-    db.ref('robots_general').once('value', snapshot=>{
-        const robots = snapshot.val();
-        ['robot1Inicial','robot2Inicial','robot1General','robot2General'].forEach(id=>{
-            const sel = document.getElementById(id);
-            sel.innerHTML='';
-            for(let key in robots){
-                const r = robots[key];
-                const opt = document.createElement('option');
-                opt.value=key; opt.text=r.name;
-                sel.appendChild(opt);
-            }
-        });
-    });
-}
-
-// REGISTRAR GANADOR
-window.registrarGanador = function(tipo){
-    let sel1, sel2;
-    if(tipo==='inicial'){ sel1='robot1Inicial'; sel2='robot2Inicial'; }
-    else{ sel1='robot1General'; sel2='robot2General'; }
-    const r1key = document.getElementById(sel1).value;
-    const r2key = document.getElementById(sel2).value;
-    if(r1key===r2key) return alert("Selecciona robots diferentes");
-
-    let ganador = prompt("Ingresa el nombre del ganador:");
-    if(!ganador) return alert("Debes indicar ganador");
-
-    db.ref('robots_general').once('value', snapshot=>{
-        snapshot.forEach(c=>{
-            const key = c.key;
-            const robot = c.val();
-            if(robot.name === ganador){
-                let pts = robot.points || 0;
-                pts+=1;
-                db.ref('robots_general/'+key).update({points:pts});
-            } else if(key===r1key || key===r2key){
-                let pts = robot.points || 0;
-                pts+=0.5;
-                db.ref('robots_general/'+key).update({points:pts});
-            }
-        });
-    });
-    cargarGanadores();
-}
-
-// CARGAR GANADORES
-function cargarGanadores(){
-    db.ref('robots_general').once('value', snapshot=>{
-        const list = document.getElementById('ganadoresList');
-        list.innerHTML='';
-        snapshot.forEach(c=>{
-            const robot = c.val();
-            if(robot.points && robot.points>0){
-                const div = document.createElement('div');
-                div.textContent=`${robot.name}: ${robot.points} puntos`;
-                list.appendChild(div);
-            }
-        });
-    });
-}
-});
-</script>
+      });
+  </script>
 </body>
 </html>
