@@ -1,45 +1,28 @@
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8">
-  <title>Subir Robot</title>
-</head>
-<body>
-  <h1>Subir Robot</h1>
-  <form id="robotForm">
-    <input type="text" id="nombre" placeholder="Nombre del robot" required><br><br>
-    <input type="text" id="categoria" placeholder="Categoría" required><br><br>
-    <input type="text" id="imagenURL" placeholder="URL de la imagen" required><br><br>
-    <button type="submit">Subir</button>
-  </form>
+<script>
+  const SHEET_JSON_URL = "https://docs.google.com/spreadsheets/d/1kTVlPxRR8XJJmfvFXuhtwLCqzvtQGBD2dyki5vZy5Gw/gviz/tq?tqx=out:json&sheet=Robots";
 
-  <p id="msg"></p>
+  fetch(SHEET_JSON_URL)
+    .then(res => res.text())
+    .then(txt => {
+      if (txt.startsWith("<")) {
+        throw new Error("La hoja no es pública o la URL está mal");
+      }
+      const json = JSON.parse(txt.substr(47).slice(0, -2)); // Limpia el JSON raro de Google
+      const rows = json.table.rows;
 
-  <script>
-    const SCRIPT_URL = "TU_URL_DEL_WEBAPP"; // 👈 pon aquí la URL del Web App publicado
+      const container = document.getElementById("robots");
+      rows.forEach(r => {
+        const nombre = r.c[1]?.v || "";
+        const categoria = r.c[2]?.v || "";
+        const imagen = r.c[3]?.v || "";
 
-    document.getElementById("robotForm").addEventListener("submit", function(e) {
-      e.preventDefault();
-
-      const data = {
-        nombre: document.getElementById("nombre").value,
-        categoria: document.getElementById("categoria").value,
-        imagenURL: document.getElementById("imagenURL").value
-      };
-
-      fetch(SCRIPT_URL, {
-        method: "POST",
-        body: JSON.stringify(data),
-        headers: { "Content-Type": "application/json" }
-      })
-      .then(res => res.json())
-      .then(res => {
-        document.getElementById("msg").innerText = res.message;
-      })
-      .catch(err => {
-        document.getElementById("msg").innerText = "❌ Error: " + err;
+        const div = document.createElement("div");
+        div.className = "robot";
+        div.innerHTML = `<h3>${nombre}</h3><p>${categoria}</p><img src="${imagen}" alt="${nombre}">`;
+        container.appendChild(div);
       });
+    })
+    .catch(err => {
+      document.getElementById("robots").innerText = "❌ Error: " + err.message;
     });
-  </script>
-</body>
-</html>
+</script>
